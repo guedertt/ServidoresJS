@@ -28,6 +28,24 @@ app.post('/aulas',(req,res) => { //pode ter uma rota com o mesmo nome de 'aulas'
     res.status(201)//código pra criado com sucesso
 }) 
 
+app.put('/aulas/:id', (req,res) =>{ //put é pra atualizar
+    const id = req.params.id 
+    const usuario = bd.find(user => user.id ==id)
+    if (!usuario){ //quando o find não acha ele retorna undefined, então o retorno vai ser diferente de usuario, por isso o !usuario
+        res.status(404).json({msg:"erro"})
+    }
+    res.send('ok') // mandando msg p servidor
+})
+
+app.delete('/aulas/:id',(req,res) => {
+    const id = req.params.id
+    const usuarioIndex = bd.findIndex(user => user.id == id)
+    if (usuarioIndex === -1){//quando o findIndex nao acha oq quer, ele retorna -1, então da pra usar isso pra verificar se funcionou ou nao
+        res.status(404).json({msg:"erro"})
+    }
+    bd.splice(usuarioIndex,1)
+    res.status(204).send()
+})
 
 app.listen(port,()=>{ //inicializando o servidor, o app que é responsavel pelo express agora ouve a porta 8000 com o listen
     console.log("Servidor inicializado") //console log só pra ter certeza que o servidor foi inicializado
