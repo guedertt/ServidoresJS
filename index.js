@@ -1,53 +1,112 @@
-const express = require('express') //express eh um modulo que simplifica a criação de uma api, com o require to importando ele
-const app = express() //inicializando express pra ele servir de algo (só importar nao adianta de nada)
-const port = 8000 //variavel com a porta que vamo utilizar
-app.use(express.json()) //fala p servidor que vai receber os dados em json (das aulas)
+const fs = require('fs');
+const express = require('express'); // express é um módulo que simplifica a criação de uma API, com o require estou importando ele
+const app = express(); // inicializando express pra ele servir de algo (só importar não adianta de nada)
+const port = 8000; // variável com a porta que vamos utilizar
+app.use(express.json()); // fala pro servidor que vai receber os dados em JSON (das aulas)
 
+// Ler todas as aulas
+app.get('/aulas', (req, res) => {
+    fs.readFile('bancoDeDados.json', 'utf-8', (err, data) => {
+        if (err) {
+            return res.status(500).json({ msg: "Erro no servidor" });
+        }
+        const dados = JSON.parse(data);
+        res.status(200).json(dados);
+    });
+});
 
-const bd = [
-    {
-        //definindo oq é uma aula
-        titulo:"desenvolvimento de sistemas",
-        curso:"Tecnico em desenvolvimento de sistemas",
-        turma:"3B",
-        professor:"Ramon",
-        id:1
-    }
-]
+// Ler uma aula específica pelo ID
+app.get('/aulas/:id', (req, res) => {
+    const id = parseInt(req.params.id);
+    fs.readFile('bancoDeDados.json', 'utf-8', (err, data) => {
+        if (err) {
+            return res.status(500).json({ msg: "Erro no servidor" });
+        }
+        const aulas = JSON.parse(data);
+        const aula = aulas.find(aula => aula.id === id);
+        if (!aula) {
+            return res.status(404).json({ msg: "Aula não encontrada" });
+        }
+        res.status(200).json(aula);
+    });
+});
 
+// Criar uma nova aula
+app.post('/aulas', (req, res) => {
+    const novaAula = req.body; // Dados novos recebidos no body
+    fs.readFile('bancoDeDados.json', 'utf-8', (err, data) => {
+        if (err) {
+            return res.status(500).json({ msg: 'Erro ao ler o banco de dados' });
+        }
 
+        const aulas = JSON.parse(data);
+        novaAula.id = aulas.length > 0 ? aulas[aulas.length - 1].id + 1 : 1; // Novo ID sequencial
+        aulas.push(novaAula);
 
-app.get('/aulas',(req,res)=>{ //criando uma rota que só vai aceitar metodos get, depois crio uma callback ()=>, nesse caso o get mostra todas as aulas do bd 
-    res.send(bd) //res serve para mandar a resposta no servidor, sem ser no console, nesse caso a gente mostra todas as informaçoes das aulas do nosso banco de dados 
-})
-app.post('/aulas',(req,res) => { //pode ter uma rota com o mesmo nome de 'aulas' pq são metodos diferentes (post e get), dai pra acessar tem que usar o postman, serve pra criar aulas
-    const dados = req.body //salvando dentro da variavel "dados" as informações do json
-    dados['id'] = bd.length+1 //aqui estamos criando a variavel id com dados['id'] e aumentando +1 a cada aula nova, pra ter id 1,2,3 etc
-    console.log(dados)
-    bd.push(dados)//atualizando o nosso bd mandando os dados da nova aula criada
-    res.status(201)//código pra criado com sucesso
-}) 
+        fs.writeFile('bancoDeDados.json', JSON.stringify(aulas, null, 2), (err) => {
+            if (err) {
+                return res.status(500).json({ msg: 'Erro ao salvar a nova aula' });
+            }
+            res.status(201).json({ msg: 'Aula criada com sucesso', aula: novaAula });
+        });
+    });
+});
 
-app.put('/aulas/:id', (req,res) =>{ //put é pra atualizar
-    const id = req.params.id 
-    const usuario = bd.find(user => user.id ==id)
-    if (!usuario){ //quando o find não acha ele retorna undefined, então o retorno vai ser diferente de usuario, por isso o !usuario
-        res.status(404).json({msg:"erro"})
-    }
-    res.send('ok') // mandando msg p servidor
-})
+// Atualizar uma aula existente
+app.put('/aulas/:id', (req, res) => {
+    const id = parseInt(req.params.id);
+    fs.readFile('bancoDeDados.json', 'utf-8', (err, data) => {
+        if (err) {
+            return res.status(500).json({ msg: 'Erro no servidor' });
+        }
+        const aulas = JSON.parse(data);
+        const aulaIndex = aulas.findIndex(aula => aula.id === id);
 
-app.delete('/aulas/:id',(req,res) => {
-    const id = req.params.id
-    const usuarioIndex = bd.findIndex(user => user.id == id)
-    if (usuarioIndex === -1){//quando o findIndex nao acha oq quer, ele retorna -1, então da pra usar isso pra verificar se funcionou ou nao
-        res.status(404).json({msg:"erro"})
-    }
-    bd.splice(usuarioIndex,1)
-    res.status(204).send()
-})
+        if (aulaIndex === -1) {
+            return res.status(404).json({ msg: 'Aula não encontrada' });
+        }
 
-app.listen(port,()=>{ //inicializando o servidor, o app que é responsavel pelo express agora ouve a porta 8000 com o listen
-    console.log("Servidor inicializado") //console log só pra ter certeza que o servidor foi inicializado
-})
+        const novosDados = req.body;
+        for (let key in novosDados) {
+            aulas[aulaIndex][key] = novosDados[key];
+        }
 
+        fs.writeFile('bancoDeDados.json', JSON.stringify(aulas, null, 2), (err) => {
+            if (err) {
+                return res.status(500).json({ msg: 'Erro ao salvar as alterações' });
+            }
+            res.status(200).json({ msg: 'Aula atualizada com sucesso', aula: aulas[aulaIndex] });
+        });
+    });
+});
+
+// Deletar uma aula
+app.delete('/aulas/:id', (req, res) => {
+    const id = parseInt(req.params.id);
+    fs.readFile('bancoDeDados.json', 'utf-8', (err, data) => {
+        if (err) {
+            return res.status(500).json({ msg: 'Erro no servidor' });
+        }
+
+        let aulas = JSON.parse(data);
+        const aulaIndex = aulas.findIndex(aula => aula.id === id);
+
+        if (aulaIndex === -1) {
+            return res.status(404).json({ msg: "Aula não encontrada" });
+        }
+
+        aulas.splice(aulaIndex, 1);
+
+        fs.writeFile('bancoDeDados.json', JSON.stringify(aulas, null, 2), (err) => {
+            if (err) {
+                return res.status(500).json({ msg: 'Erro ao salvar as alterações' });
+            }
+            res.status(204).send(); // 204: Sucesso sem conteúdo
+        });
+    });
+});
+
+// Inicializar o servidor
+app.listen(port, () => {
+    console.log("Servidor inicializado na porta " + port);
+});
