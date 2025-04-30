@@ -1,5 +1,6 @@
 const fs = require('fs');
 
+
 // Função reutilizável: listar todas as aulas
 function listarAulas(callback) {
     fs.readFile('bancoDeDados.json', 'utf-8', (err, data) => {
